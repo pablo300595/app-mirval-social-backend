@@ -4,6 +4,7 @@
   "description": "Backend para el desarrollo de una red social de la empresa MIRVAL",
   "main": "index.js",
   "scripts": {
+    "start": "nodemon index",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Jose Pablo Valenzuela Miramontes",
