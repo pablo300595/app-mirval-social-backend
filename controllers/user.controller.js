@@ -4,6 +4,8 @@ const User = require('./../models/user.model');
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('./../services/jwt');
 const mongoosePaginate = require('mongoose-pagination');
+const fs = require('fs');
+const path = require('path');
 
 function home(req, res) {
     res.status(200).send({
@@ -120,11 +122,80 @@ function getUsers(req, res) {
 
 }
 
+function updateUser(req, res) {
+    const userId = req.params.id;
+    let user = req.body;
+    delete user.password;
+
+    if(userId != req.user.sub) {
+        return res.status(500).send({message: 'You are not allowed to update user data'});
+    }
+
+    User.findByIdAndUpdate(userId, user, {new: true}, (err, updatedUser) => {
+        if(err) return res.status(500).send({message: 'Erro in the request'});
+        if(!updateUser) return res.status(404).send({message: 'User not updated'});
+        return res.status(200).send({user: updatedUser});
+    })
+}
+
+function uploadImage(req, res) { 
+    let userId = req.params.id;
+    
+    if(req.files) {
+        const file_path = req.files.image.path;
+        const file_split = file_path.split('/');
+        const file_name = file_split[2];
+        const ext_split = file_name.split('\.');
+        const file_ext = ext_split[1];
+
+        if(userId != req.user.sub) {
+            return removeFiles(res, file_path, 'You are not allowed to update the avatar Image');
+        }
+    
+
+        if(file_ext == 'png' || file_ext == 'jpg' || file_ext == 'jpeg' || file_ext == 'gif') {
+            // Update user avater if file extension is correct
+            User.findByIdAndUpdate(userId, {image: file_name}, {new: true}, (err, userUpdated) => {
+                if(err) return res.status(500).send({message: 'Error in the request'});
+
+                if(!userUpdated) return res.status(404).send({message: `User couldn't been updated`});
+
+                return res.status(200).send({user: userUpdated});
+            });
+        } else {
+            return removeFiles(res, file_path, 'Invalid Extension');
+        }
+    } else {
+        return res.status(200).send({message: `File haven't been uploaded`});
+    }
+}
+
+function getImageFile(req, res) { 
+    const imageFile = req.params.imageFile;
+    const pathFile = './uploads/users/'+imageFile;
+    fs.exists(pathFile, (exist) => {
+        if(exist) {
+            res.sendFile(path.resolve(pathFile));
+        } else {
+            res.status(200).send({message: `Image doesn't exist`});
+        }
+    });
+}
+
+function removeFiles(res, file_path, message){ 
+    fs.unlink(file_path, (err) => {
+        return res.status(200).send({message: message, error: err});
+    });
+}
+
 module.exports = {
     home,
     test,
     saveUser,
     loginUser,
     getUser,
-    getUsers
+    getUsers,
+    updateUser,
+    uploadImage,
+    getImageFile
 }
