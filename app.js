@@ -7,6 +7,7 @@ let app = express();
 
 // Load Routes
 const user_routes = require('./routes/user.route');
+const follow_routes = require('./routes/follow.route');
 
 // Middlewares
 app.use(bodyParser.urlencoded({extended:false}));
@@ -16,5 +17,6 @@ app.use(bodyParser.json());
 
 // Routes
 app.use('/api', user_routes);
+app.use('/api', follow_routes);
 // Export
 module.exports = app;
