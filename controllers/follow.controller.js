@@ -75,9 +75,24 @@ function getFollowedUsers(req, res){
     });
 }
 
+function getMyFollows(req, res) {
+    let userId = req.user.sub;
+    let find = Follow.find({user: userId});
+
+    if(req.params.followed) {
+        find = Follow.find({followed: userId});
+    }
+    find.populate('user followed').exec((err, follows) => {
+        if(err) return res.status(500).send({message: 'Error in the server'});
+        if(!follows) return res.status(404).send({message: `There's no follows`});
+        return res.status(200).send({follows});
+    });
+}
+
 module.exports = {
     saveFollow,
     deleteFollow,
     getFollowingUsers,
-    getFollowedUsers
+    getFollowedUsers,
+    getMyFollows
 }
