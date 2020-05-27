@@ -27,7 +27,57 @@ function deleteFollow(req, res) {
     });
 }
 
+function getFollowingUsers(req, res) { 
+    let userId = req.user.sub;
+    let page = 1;
+    let itemsPerPage = 2;
+
+    if(req.params.id && req.params.page) {
+        userId = req.params.id;
+    }
+
+    if(req.params.page) {
+        page = req.params.page;
+    }
+
+    Follow.find({user: userId}).populate({path: 'followed'}).paginate(page, itemsPerPage, (err, follows, total) => {
+        if(err) return res.status(500).send({message: 'Error in the server'});
+        if(!follows) return res.status(404).send({message: `There's no follows`});
+        return res.status(200).send({
+            total: total,
+            pages: Math.ceil(total/itemsPerPage),
+            follows
+        });
+    });
+}
+
+function getFollowedUsers(req, res){ 
+    let userId = req.user.sub;
+    let page = 1;
+    let itemsPerPage = 2;
+
+    if(req.params.id && req.params.page) {
+        userId = req.params.id;
+    }
+
+    if(req.params.page) {
+        page = req.params.page;
+    }
+
+    Follow.find({followed: userId}).populate('user').paginate(page, itemsPerPage, (err, follows, total) => {
+        if(err) return res.status(500).send({message: 'Error in the server'});
+        if(!follows) return res.status(404).send({message: `There's no follows`});
+        return res.status(200).send({
+            total: total,
+            pages: Math.ceil(total/itemsPerPage),
+            follows
+        });
+    });
+}
+
 module.exports = {
     saveFollow,
-    deleteFollow
+    deleteFollow,
+    getFollowingUsers,
+    getFollowedUsers
 }
