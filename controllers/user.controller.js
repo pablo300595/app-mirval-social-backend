@@ -8,17 +8,6 @@ const mongoosePaginate = require('mongoose-pagination');
 const fs = require('fs');
 const path = require('path');
 
-function home(req, res) {
-    res.status(200).send({
-        message: 'Home'
-    });
-}
-
-function test(req, res) {
-    res.status(200).send({
-        message: 'Test'
-    });
-}
 
 function saveUser(req, res) {
     let user = new User();
@@ -92,14 +81,19 @@ function loginUser(req, res) {
         }
     });
 }
-
+/**
+ * Permite consultar si el usuario autenticado sigue al usuario especificado por URL
+ * y viceversa.
+ * @param {Request} req Petición HTTP
+ * @param {Response} res Respuesta HTTP
+ */
 function getUser(req, res) {
     const userId = req.params.id;
     
     Promise.all([
         User.findById(userId), 
-        Follow.findOne({"user": req.user.sub, "followed": userId}),
-        Follow.findOne({"user": userId, "followed": req.user.sub})
+        Follow.findOne({'user': req.user.sub, 'followed': userId}),
+        Follow.findOne({'user': userId, 'followed': req.user.sub})
     ])
     .then(value => {
         console.log(value[0].constructor.modelName)
@@ -109,28 +103,62 @@ function getUser(req, res) {
         return res.status(500).send({message: err});
     });
 }
-
+/**
+ * Permite obtener todos los usuarios paginados
+ * y viceversa.
+ * @param {Request} req Petición HTTP
+ * @param {Response} res Respuesta HTTP
+ */
 function getUsers(req, res) {
-    const identity_user_id = req.user.sub;
     let page = 1;
     let itemsPerPage = 5;
+    let usersIFollow = [];
+    let usersThatFollowMe = [];
 
     if(req.params.page) {
         page = req.params.page;
     }
 
-    User.find().sort('_id').paginate(page, itemsPerPage, (err, users, total) => {
-        if(err) return res.status(500).send({message: 'Error in the request'});
-        if(!users) return res.status(404).send({message: 'No Users Found'});
-        return res.status(200).send({
-            users,
-            total,
-            pages: Math.ceil(total/itemsPerPage)
-        });
+    Promise.all([
+        User.find(),
+        User.find().sort('_id').paginate(page, itemsPerPage),
+        Follow.find({'user': req.user.sub}),
+        Follow.find({'followed': req.user.sub}),
+    ])
+    .then(value => {
+        usersIFollow = generateFollowArray(value[2],'IFollow');
+        usersThatFollowMe = generateFollowArray(value[3], 'FollowMe');
+        res.status(200).send({pages: Math.ceil(value[0].length/itemsPerPage),total:value[0].length, users: value[1], usersIFollow: usersIFollow, usersThatFollowMe: usersThatFollowMe})
+    })
+    .catch(err => {
+        return res.status(500).send({message: err});
     });
 
 }
+//Auxiliar getUsers Functions
+/**
+ * Permite transformar en Array el resultado de los Follow obtenidos en la función
+ * getUsers.
+ * @param {Request} req Petición HTTP
+ * @param {Response} res Respuesta HTTP
+ */
+function generateFollowArray(arr, followType) {
+    let followArray = [];
+    arr.forEach(user => {
+        if(followType == 'IFollow') {
+            followArray.push(user.followed);
+        } else {
+            followArray.push(user.user);
+        }
+     });
+     return followArray;
+}
 
+/**
+ * Permite al usuario autenticado actualizar usuarios si este tiene permisos.
+ * @param {Request} req Petición HTTP
+ * @param {Response} res Respuesta HTTP
+ */
 function updateUser(req, res) {
     const userId = req.params.id;
     let user = req.body;
@@ -198,8 +226,6 @@ function removeFiles(res, file_path, message){
 }
 
 module.exports = {
-    home,
-    test,
     saveUser,
     loginUser,
     getUser,
