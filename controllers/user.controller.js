@@ -225,6 +225,14 @@ function removeFiles(res, file_path, message){
     });
 }
 
+function getFollowStadistics(req, res) {
+    Promise.all([Follow.estimatedDocumentCount({user: req.user.sub}), Follow.count({followed: req.user.sub})])
+    .then(value => {
+        res.status(200).send({followingCount: value[0], followedCount: value[1]});
+    })
+    .catch();
+}
+
 module.exports = {
     saveUser,
     loginUser,
@@ -232,5 +240,6 @@ module.exports = {
     getUsers,
     updateUser,
     uploadImage,
-    getImageFile
+    getImageFile,
+    getFollowStadistics
 }
