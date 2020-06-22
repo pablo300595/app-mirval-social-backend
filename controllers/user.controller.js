@@ -8,7 +8,12 @@ const mongoosePaginate = require('mongoose-pagination');
 const fs = require('fs');
 const path = require('path');
 
-
+        /**FUNCTION saveUser
+        * Permite almacenar un usuario en la Base de Datos. No requiere autorización.
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {JSON} --> {user: userStored}
+        */
 function saveUser(req, res) {
     let user = new User();
 
@@ -51,7 +56,12 @@ function saveUser(req, res) {
         });
     }
 }
-
+        /**FUNCTION loginUser
+        * Permite obtener un JWT en base al BODY{email, password, gettoken: true}.
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {JSON} JWT de Autorización
+        */
 function loginUser(req, res) {
     let email = req.body.email;
     let password = req.body.password;
@@ -81,12 +91,13 @@ function loginUser(req, res) {
         }
     });
 }
-/**
- * Permite consultar si el usuario autenticado sigue al usuario especificado por URL
- * y viceversa.
- * @param {Request} req Petición HTTP
- * @param {Response} res Respuesta HTTP
- */
+        /**FUNCTION getUser
+        * Permite consultar si el usuario autenticado sigue al usuario especificado por URL
+        * y viceversa. Adicionalmente se obtiene el objeto de dicho usuario especificado.
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {JSON} {UserURLObject, following, followed}
+        */
 function getUser(req, res) {
     const userId = req.params.id;
     
@@ -103,12 +114,14 @@ function getUser(req, res) {
         return res.status(500).send({message: err});
     });
 }
-/**
- * Permite obtener todos los usuarios paginados
- * y viceversa.
- * @param {Request} req Petición HTTP
- * @param {Response} res Respuesta HTTP
- */
+        /**FUNCTION getUsers
+        * Permite obtener todos los usuarios paginados. Adicionalmente se proporcionan 2 listas: 
+        * 1) Lista de Id de usuarios seguidos por el usuario autenticado. 2) Lista de Id que siguen
+        * al usuario autenticado.
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {JSON} {pages, total, PaginatedUsersArray, usersIFollow, usersThatFollowMe}
+        */
 function getUsers(req, res) {
     let page = 1;
     let itemsPerPage = 5;
@@ -135,13 +148,13 @@ function getUsers(req, res) {
     });
 
 }
-//Auxiliar getUsers Functions
-/**
- * Permite transformar en Array el resultado de los Follow obtenidos en la función
- * getUsers.
- * @param {Request} req Petición HTTP
- * @param {Response} res Respuesta HTTP
- */
+            /**__Auxiliar getUsers Functions
+        * Permite transformar en Array el resultado de los Follow obtenidos en la función
+        * getUsers.
+        * @param {Array} arr Array de objetos a convertir
+        * @param {String} followType Tipo de operación <IFollow>, <FollowMe>
+        * @return {Array} Array de String de los Id
+            */
 function generateFollowArray(arr, followType) {
     let followArray = [];
     arr.forEach(user => {
@@ -153,12 +166,11 @@ function generateFollowArray(arr, followType) {
      });
      return followArray;
 }
-
-/**
- * Permite al usuario autenticado actualizar usuarios si este tiene permisos.
- * @param {Request} req Petición HTTP
- * @param {Response} res Respuesta HTTP
- */
+        /**FUNCTION updateUser
+        * Permite al usuario autenticado actualizar usuarios si este tiene permisos.
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+         */
 function updateUser(req, res) {
     const userId = req.params.id;
     let user = req.body;
@@ -174,7 +186,12 @@ function updateUser(req, res) {
         return res.status(200).send({user: updatedUser});
     })
 }
-
+        /**FUNCTION uploadImage
+        * Permite que el usuario autenticado actualice su imagen de perfil: 
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {JSON} {user}
+        */
 function uploadImage(req, res) { 
     let userId = req.params.id;
     
@@ -189,14 +206,11 @@ function uploadImage(req, res) {
             return removeFiles(res, file_path, 'You are not allowed to update the avatar Image');
         }
     
-
         if(file_ext == 'png' || file_ext == 'jpg' || file_ext == 'jpeg' || file_ext == 'gif') {
-            // Update user avater if file extension is correct
+            // Update user avatar if file extension is correct
             User.findByIdAndUpdate(userId, {image: file_name}, {new: true}, (err, userUpdated) => {
                 if(err) return res.status(500).send({message: 'Error in the request'});
-
                 if(!userUpdated) return res.status(404).send({message: `User couldn't been updated`});
-
                 return res.status(200).send({user: userUpdated});
             });
         } else {
@@ -206,7 +220,23 @@ function uploadImage(req, res) {
         return res.status(200).send({message: `File haven't been uploaded`});
     }
 }
-
+            /**__Auxiliar uploadImage Functions
+        * Elimina archivos cuando un usuario no autorizado trata de subir una imágen.
+        * @param {Array} arr Array de objetos a convertir
+        * @param {String} followType Tipo de operación <IFollow>, <FollowMe>
+        * @return {JSON} {message, error}
+            */
+function removeFiles(res, file_path, message){ 
+    fs.unlink(file_path, (err) => {
+        return res.status(200).send({message: message, error: err});
+    });
+}
+        /**FUNCTION getImageFile
+        * Le permite al usuario autenticado obtener su foto de perfil. 
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {Image} Foto de perfil
+        */
 function getImageFile(req, res) { 
     const imageFile = req.params.imageFile;
     const pathFile = './uploads/users/'+imageFile;
@@ -219,18 +249,21 @@ function getImageFile(req, res) {
     });
 }
 
-function removeFiles(res, file_path, message){ 
-    fs.unlink(file_path, (err) => {
-        return res.status(200).send({message: message, error: err});
-    });
-}
-
+        /**FUNCTION getFollowStadistics
+        * Permite obtener un objeto con el conteo de usuarios que siguen al usuario autenticado, y también
+        * los usuarios que son seguidos por este.
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {JSON} {followingCount, followedCount}
+        */
 function getFollowStadistics(req, res) {
-    Promise.all([Follow.estimatedDocumentCount({user: req.user.sub}), Follow.count({followed: req.user.sub})])
+    Promise.all([Follow.count({user: req.user.sub}), Follow.count({followed: req.user.sub})])
     .then(value => {
         res.status(200).send({followingCount: value[0], followedCount: value[1]});
     })
-    .catch();
+    .catch(err => {
+        return res.status(500).send({message: err});
+    });
 }
 
 module.exports = {
