@@ -74,7 +74,13 @@ function getFollowedUsers(req, res){
         });
     });
 }
-
+/**
+ * Devuelve los usuarios que siguen al usuario autenticado
+ * o que el usuario autenticado sigue dependiendo los parámetros http.
+ * @param {Request} req petición HTTP
+ * @param {Response} res objeto de respuesta a construir HTTP
+ * @returns {Response} res
+ */
 function getMyFollows(req, res) {
     let userId = req.user.sub;
     let find = Follow.find({user: userId});

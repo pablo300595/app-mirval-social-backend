@@ -1,6 +1,7 @@
 'use strict';
 
 const User = require('./../models/user.model');
+const Follow = require('./../models/follow.model');
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('./../services/jwt');
 const mongoosePaginate = require('mongoose-pagination');
@@ -94,10 +95,18 @@ function loginUser(req, res) {
 
 function getUser(req, res) {
     const userId = req.params.id;
-    User.findById(userId, (err, user) => {
-        if(err) return res.status(500).send({message: 'Error in the request'});
-        if(!user) return res.status(404).send({message: `User doesn't exist`});
-        return res.status(200).send({user});
+    
+    Promise.all([
+        User.findById(userId), 
+        Follow.findOne({"user": req.user.sub, "followed": userId}),
+        Follow.findOne({"user": userId, "followed": req.user.sub})
+    ])
+    .then(value => {
+        console.log(value[0].constructor.modelName)
+        console.log(value[1].constructor.modelName)
+        res.status(200).send({user: value[0], following: value[1], followed: value[2]});
+    }).catch(err => {
+        return res.status(500).send({message: err});
     });
 }
 
