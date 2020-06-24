@@ -67,9 +67,35 @@ function getPosts(req, res) {
     });
     
 }
+        /**FUNCTION savePost
+        * Devuelve la publicación especificada por ID.
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {JSON} {post}
+        */
+function getPost(req, res) {
+    let postId = req.params.id;
+
+    Post.findById(postId, (err, post) => {
+        if(err) return res.status(500).send({message: 'Error while retrieving post'});
+        if(!post) return res.status(404).send({message: 'There are no posts'});
+        return res.status(200).send({post});
+    });
+}
+
+function deletePost(req, res) {
+    let postId = req.params.id;
+
+    Post.find({user: req.user.sub, _id: postId}).remove((err) => {
+        if(err) return res.status(500).send({message: 'Error while deleting post'});
+        return res.status(200).send({post: 'Post Removed correctly'});
+    });
+}
 
 module.exports = {
     test,
     savePost,
-    getPosts
+    getPosts,
+    getPost,
+    deletePost
 }

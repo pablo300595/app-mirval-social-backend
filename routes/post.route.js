@@ -9,6 +9,8 @@ const md_upload = multipart({ uploadDir: './uploads/posts' });
 
 api.get('/test-post', md_auth.ensureAuth, PostController.test);
 api.post('/post', md_auth.ensureAuth, PostController.savePost);
-api.get('/post/:page?', md_auth.ensureAuth, PostController.getPosts);
+api.get('/posts/:page?', md_auth.ensureAuth, PostController.getPosts);
+api.get('/post/:id', md_auth.ensureAuth, PostController.getPost);
+api.delete('/post/:id', md_auth.ensureAuth, PostController.deletePost);
 
 module.exports = api;
