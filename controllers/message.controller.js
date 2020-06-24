@@ -94,11 +94,26 @@ function getUnseenMessages(req, res) {
         return res.status(200).send({unviewed: count});
     });
 }
+        /**FUNCTION getUnseenMessages
+        * Permite obtener el conteo de los mensajes no vistos por el usuario autenticado.
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {JSON}  {unviewed}
+        */
+function setViewedMessages(req, res) {
+    Message.update({receiver: req.user.sub, viewed: false}, {viewed: true}, {"multi": true}, (err, messagesUpdated) => {
+        if(err) return res.status(500).send({message: 'Error at request'});
+        return res.status(500).send({
+            messages: messagesUpdated
+        });
+    });
+}
 
 module.exports = {
     test,
     saveMessage,
     getReceivedMessages,
     getEmittedMessages,
-    getUnseenMessages
+    getUnseenMessages,
+    setViewedMessages
 }
