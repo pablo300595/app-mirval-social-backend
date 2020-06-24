@@ -34,7 +34,42 @@ function savePost(req, res) {
     });
 }
 
+        /**FUNCTION savePost
+        * Devuelve las publicaciones de los usuarios que el usuario autenticado sigue.
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {JSON} {post}
+        */
+function getPosts(req, res) {
+    let page = 1;
+    let itemsPerPage = 4;
+    if(req.params.page) {
+        page = req.params.page;
+    }
+
+    Follow.find({user: req.user.sub}).populate('followed').exec((err, follows) => {
+        if(err) return res.status(500).send({message: 'Error while retrieving follows'});
+        let follows_clean = [];
+        follows.forEach(follow => {
+            follows_clean.push(follow.followed);
+        });
+        // Busca cuyo usuario esté contenido en el array follows_clean
+        Post.find({user: {$in: follows_clean}}).sort('-created_at').populate('user').paginate(page, itemsPerPage, (err, posts, total) => {
+            if(err) return res.status(500).send({message: 'Error while retrieving posts'});
+            if(!posts) return res.status(404).send({message: 'There are not posts'});
+            return res.status(200).send({
+                total_items: total,
+                pages: Math.ceil(total/itemsPerPage),
+                page: page,
+                posts
+            })
+        })
+    });
+    
+}
+
 module.exports = {
     test,
-    savePost
+    savePost,
+    getPosts
 }
