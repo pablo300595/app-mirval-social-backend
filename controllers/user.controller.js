@@ -2,6 +2,7 @@
 
 const User = require('./../models/user.model');
 const Follow = require('./../models/follow.model');
+const Post = require('./../models/post.model');
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('./../services/jwt');
 const mongoosePaginate = require('mongoose-pagination');
@@ -220,12 +221,13 @@ function uploadImage(req, res) {
         return res.status(200).send({message: `File haven't been uploaded`});
     }
 }
-            /**__Auxiliar uploadImage Functions
+         /**__Auxiliar uploadImage Functions
         * Elimina archivos cuando un usuario no autorizado trata de subir una imágen.
-        * @param {Array} arr Array de objetos a convertir
-        * @param {String} followType Tipo de operación <IFollow>, <FollowMe>
+        * @param {Response} res Respuesta HTTP.
+        * @param {String} file_path Ruta de archivo.
+        * @param {String} message Mensaje personalizado.
         * @return {JSON} {message, error}
-            */
+        */
 function removeFiles(res, file_path, message){ 
     fs.unlink(file_path, (err) => {
         return res.status(200).send({message: message, error: err});
@@ -252,14 +254,19 @@ function getImageFile(req, res) {
         /**FUNCTION getFollowStadistics
         * Permite obtener un objeto con el conteo de usuarios que siguen al usuario autenticado, y también
         * los usuarios que son seguidos por este.
+        * Obtiene también
         * @param {Request} req Petición HTTP
         * @param {Response} res Respuesta HTTP
-        * @return {JSON} {followingCount, followedCount}
+        * @return {JSON} {followingCount, followedCount, postsCount}
         */
-function getFollowStadistics(req, res) {
-    Promise.all([Follow.count({user: req.user.sub}), Follow.count({followed: req.user.sub})])
+function getAnalytics(req, res) {
+    Promise.all([
+        Follow.count({user: req.user.sub}), 
+        Follow.count({followed: req.user.sub}),
+        Post.count({user: req.user.sub})
+    ])
     .then(value => {
-        res.status(200).send({followingCount: value[0], followedCount: value[1]});
+        res.status(200).send({followingCount: value[0], followedCount: value[1], postsCount: value[2]});
     })
     .catch(err => {
         return res.status(500).send({message: err});
@@ -274,5 +281,5 @@ module.exports = {
     updateUser,
     uploadImage,
     getImageFile,
-    getFollowStadistics
+    getAnalytics
 }

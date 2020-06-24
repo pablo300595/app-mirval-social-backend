@@ -9,10 +9,6 @@ let Post = require('./../models/post.model');
 let User = require('./../models/user.model');
 let Follow = require('./../models/follow.model');
 
-function test(req, res) {
-    res.status(200).send({message: 'Test From Post Controller'});
-}
-
         /**FUNCTION savePost
         * Permite guardar un Post hecho por el usuario autenticado.
         * @param {Request} req Petición HTTP
@@ -33,12 +29,11 @@ function savePost(req, res) {
         return res.status(200).send({post: postSaved})
     });
 }
-
-        /**FUNCTION savePost
+        /**FUNCTION getPosts
         * Devuelve las publicaciones de los usuarios que el usuario autenticado sigue.
         * @param {Request} req Petición HTTP
         * @param {Response} res Respuesta HTTP
-        * @return {JSON} {post}
+        * @return {JSON} {total_items, pages, page, posts[]}
         */
 function getPosts(req, res) {
     let page = 1;
@@ -67,7 +62,7 @@ function getPosts(req, res) {
     });
     
 }
-        /**FUNCTION savePost
+        /**FUNCTION getPost
         * Devuelve la publicación especificada por ID.
         * @param {Request} req Petición HTTP
         * @param {Response} res Respuesta HTTP
@@ -82,20 +77,92 @@ function getPost(req, res) {
         return res.status(200).send({post});
     });
 }
-
+        /**FUNCTION deletePost
+        * Devuelve la publicación especificada por ID.
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {JSON} {message}
+        */
 function deletePost(req, res) {
     let postId = req.params.id;
 
     Post.find({user: req.user.sub, _id: postId}).remove((err) => {
         if(err) return res.status(500).send({message: 'Error while deleting post'});
-        return res.status(200).send({post: 'Post Removed correctly'});
+        return res.status(200).send({message: 'Post Removed correctly'});
     });
 }
+        /**FUNCTION uploadFile
+        * Permite que el usuario autenticado actualice el archivo de su post. 
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {JSON} {post}
+        */
+function uploadFile(req, res) {
+    let postId = req.params.id;
 
+    if(req.files) {
+        const file_path = req.files.file.path;
+        const file_split = file_path.split('/');
+        const file_name = file_split[2];
+        const ext_split = file_name.split('\.');
+        const file_ext = ext_split[1];
+
+        if(file_ext == 'png' || file_ext == 'jpg' || file_ext == 'jpeg' || file_ext == 'gif') {
+            
+            Post.find({user: req.user.sub, _id: postId}).exec((err, post) => {
+                if(post.length!=0) {
+                    // Update user post if extension is correct
+                    Post.findByIdAndUpdate(postId, {file: file_name}, {new: true}, (err, postUpdated) => {
+                        if(err) return res.status(500).send({message: 'Error in the request'});
+                        if(!postUpdated) return res.status(404).send({message: `User couldn't been updated`});
+                        return res.status(200).send({post: postUpdated});
+                    });
+                } else {
+                    return removeFiles(res, file_path, 'Not allowed to update this post');
+                }
+            });
+                
+        } else {
+            return removeFiles(res, file_path, 'Invalid Extension');
+        }
+    } else {
+        return res.status(200).send({message: `File haven't been uploaded`});
+    }
+}
+        /**__Auxiliar uploadFile Functions
+        * Elimina archivos cuando un usuario no autorizado trata de subir una imágen.
+        * @param {Response} res Respuesta HTTP.
+        * @param {String} file_path Ruta de archivo.
+        * @param {String} message Mensaje personalizado.
+        * @return {JSON} {message, error}
+        */
+function removeFiles(res, file_path, message){ 
+        fs.unlink(file_path, (err) => {
+            return res.status(200).send({message: message, error: err});
+        });
+}
+        /**FUNCTION getImageFile
+        * Le permite al usuario autenticado obtener el archivo de su post. 
+        * @param {Request} req Petición HTTP
+        * @param {Response} res Respuesta HTTP
+        * @return {File} Archivo de Post
+        */
+function getFile(req, res) { 
+    const imageFile = req.params.imageFile;
+    const pathFile = './uploads/posts/'+imageFile;
+    fs.exists(pathFile, (exist) => {
+        if(exist) {
+            res.sendFile(path.resolve(pathFile));
+        } else {
+            res.status(200).send({message: `Image doesn't exist`});
+        }
+    });
+}
 module.exports = {
-    test,
     savePost,
     getPosts,
     getPost,
-    deletePost
+    deletePost,
+    uploadFile,
+    getFile
 }
