@@ -175,17 +175,31 @@ function generateFollowArray(arr, followType) {
 function updateUser(req, res) {
     const userId = req.params.id;
     let user = req.body;
+    let userIsSet = false;
     delete user.password;
 
     if(userId != req.user.sub) {
         return res.status(500).send({message: 'You are not allowed to update user data'});
     }
 
-    User.findByIdAndUpdate(userId, user, {new: true}, (err, updatedUser) => {
-        if(err) return res.status(500).send({message: 'Erro in the request'});
-        if(!updateUser) return res.status(404).send({message: 'User not updated'});
-        return res.status(200).send({user: updatedUser});
-    })
+    User.find({$or: [
+        {email: user.email.toLowerCase()},
+        {nick: user.nick.toLowerCase()}
+    ]}).exec((err, users) => {
+        users.forEach((user) => {
+            if(user && user._id != userId) userIsSet = true; 
+        });
+
+        if(userIsSet) return res.status(404).send({message: `This data has been registered`});
+
+        User.findByIdAndUpdate(userId, user, {new: true}, (err, updatedUser) => {
+            if(err) return res.status(500).send({message: 'Error in the request'});
+            if(!updateUser) return res.status(404).send({message: 'User not updated'});
+            return res.status(200).send({user: updatedUser});
+        })
+    });
+
+    
 }
         /**FUNCTION uploadImage
         * Permite que el usuario autenticado actualice su imagen de perfil: 
