@@ -16,46 +16,36 @@ const path = require('path');
         * @return {JSON} --> {user: userStored}
         */
 function saveUser(req, res) {
-    let user = new User();
-
-    if(req.body.name && req.body.surname && req.body.nick && req.body.email && req.body.password) {
-        user.name = req.body.name;
-        user.surname = req.body.surname;
-        user.nick = req.body.nick;
-        user.email = req.body.email;
-        user.password = req.body.password;
-        user.role = 'ROLE_USER';
-        user.image = null;
-        // Check if the user to register exists in the DB
+    if(!req.body.email) return  res.status(404).send({message: `Email is required`});
+    if(!req.body.nick) return  res.status(404).send({message: `Nick is required`});
+    const user = new User({
+        name: req.body.name,
+        surname: req.body.surname,
+        nick: req.body.nick,
+        email: req.body.email,
+        password: req.body.password,
+        role: 'ROLE_USER',
+        image: null
+    });
+    // Check if the user to register exists in the DB
+    Promise.all([
         User.find({$or: [
-            {email: user.email.toLowerCase()},
-            {nick: user.nick.toLowerCase()} 
-        ]}).exec((err, users) => {
-            if(err) return res.status(500).send({message: 'Error while saving user!'});
-            if(users && users.length >= 1) {
-                return res.status(200).send({message: 'The User already exists!'});
-            } else {
-                // Encode Password and Store User
-                bcrypt.hash(req.body.password, null, null, (err, hash) => {
-                    user.password = hash;
-                    user.save((err, userStored) => {
-                        if(err) return res.status(500).send({message: 'Error while saving user!'});
-                        if(userStored) {
-                            res.status(200).send({user: userStored})
-                        } else {
-                            res.status(404).send({message: `User couldn't be saved`})
-                        }
-                    });
-                });
-
-            }
+                {email: user.email.toLowerCase()},
+                {nick: user.nick.toLowerCase()}
+            ]
+        }),
+        bcrypt.hashSync(req.body.password)
+    ]).then(data => {
+        if(data[0].length > 0) return res.status(200).send({message: 'The user is already registered'});
+        user.password = data[1];
+        user.save((err, userStored) => {
+            if(err) return res.status(500).send({message: err.message});
+            if(userStored) return res.status(200).send({user: userStored})
+            return  res.status(404).send({message: `User couldn't be saved`})
         });
-        
-    } else {
-        res.status(200).send({
-            message: 'Please send all required fields!'
-        });
-    }
+    }).catch(err => {
+        if(err) return res.status(500).send({message: err.message});
+    });
 }
         /**FUNCTION loginUser
         * Permite obtener un JWT en base al BODY{email, password, gettoken: true}.
@@ -64,32 +54,26 @@ function saveUser(req, res) {
         * @return {JSON} JWT de Autorización
         */
 function loginUser(req, res) {
-    let email = req.body.email;
-    let password = req.body.password;
+    const email = req.body.email;
+    const password = req.body.password;
+    let decryptedIsValid = false;
 
-    User.findOne({email: email}, (err, user)=> {
-        if(err) return res.status(500).send({message: 'Error at request!'});
-        if(user) {
-            bcrypt.compare(password, user.password, (err, check) => {
-                if(check) {
-                    
-                    if(req.body.gettoken) {
-                        //generate and return token
-                        return res.status(200).send({
-                            token: jwt.createToken(user)
-                        });
-                    } else {
-                        // return user data
-                        user.password = undefined;
-                        return res.status(200).send({user});
-                    }
-                } else {
-                    return res.status(404).send({message: `User doesn't exist!`});
-                }
-            });
-        } else {
-            return res.status(404).send({message: `User doesn't exist!`});
+    Promise.all([
+        User.findOne({email: email}),
+    ]).then(data => {
+        decryptedIsValid = bcrypt.compareSync(password, data[0].password);
+        // Get User Token
+        if(decryptedIsValid && req.body.gettoken) return res.status(200).send({token: jwt.createToken(data[0])});
+        // Get User Object
+        else if (decryptedIsValid && !req.body.gettoken) {
+            data[0].password = undefined;
+            return res.status(200).send({user: data[0]});
         }
+        // Get Error 
+        else if(!decryptedIsValid) return res.status(404).send({message: `User doesn't exist!`});
+        else return res.status(404).send({message: `Error While retrieving JWT!`});
+    }).catch(err => {
+        return res.status(500).send({message: err.message});
     });
 }
         /**FUNCTION getUser
