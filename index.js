@@ -2,14 +2,16 @@
 
 const mongoose = require('mongoose');
 const app = require('./app');
-const port = '3800';
+const dbConfig = require('./config/db.config');
+const serverConfig = require('./config/server.config');
+
 
 // Database Connection
 mongoose.Promise = global.Promise;
-mongoose.connect('mongodb://localhost:27017/app_social', { useNewUrlParser: true, useUnifiedTopology: true }).then( res => {
-    console.log('La conexión a la base de datos es correcta');
-    app.listen(port, res => {
-        console.log('Server running at port '+ port);
+mongoose.connect(dbConfig.URI, dbConfig.DEFAULT_OPTIONS).then( res => {
+    console.log(dbConfig.DBCONNECTION_RUNNING_SUCESS);
+    app.listen(serverConfig.PORT, () => {
+        console.log(serverConfig.SERVER_RUNNING_SUCESS + serverConfig.PORT);
     })
 }).catch( err => {
     console.log(err);
