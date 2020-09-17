@@ -48,6 +48,7 @@ function getPosts(req, res) {
         follows.forEach(follow => {
             follows_clean.push(follow.followed);
         });
+        follows_clean.push(req.user.sub);
         // Busca cuyo usuario esté contenido en el array follows_clean
         Post.find({user: {$in: follows_clean}}).sort('-created_at').populate('user').paginate(page, itemsPerPage, (err, posts, total) => {
             if(err) return res.status(500).send({message: 'Error while retrieving posts'});
@@ -56,6 +57,7 @@ function getPosts(req, res) {
                 total_items: total,
                 pages: Math.ceil(total/itemsPerPage),
                 page: page,
+                items_per_page: itemsPerPage,
                 posts
             })
         })
